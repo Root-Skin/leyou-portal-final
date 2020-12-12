@@ -2,269 +2,190 @@
 <html>
 
 <head>
-	<meta charset="utf-8" />
-	<meta http-equiv="X-UA-Compatible" content="IE=EmulateIE7" />
-	<title>乐优商城--秒杀页面</title>
-	<link rel="icon" href="/assets/img/favicon.ico">
-
-
-    <link rel="stylesheet" type="text/css" href="css/webbase.css" />
-    <link rel="stylesheet" type="text/css" href="css/widget-jquery.autocomplete.css" />
-    <link rel="stylesheet" type="text/css" href="css/pages-seckill-index.css" />
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=EmulateIE7"/>
+    <title>玲梦商城--秒杀页面</title>
+    <link rel="icon" href="/assets/img/favicon.ico">
+    <link rel="stylesheet" type="text/css" href="css/webbase.css"/>
+    <link rel="stylesheet" type="text/css" href="css/widget-jquery.autocomplete.css"/>
+    <link rel="stylesheet" type="text/css" href="css/pages-seckill-index.css"/>
 </head>
 
 <body>
 
-	<!-- 头部栏位 -->
-	<!--页面顶部，由js动态加载-->
-	<script type="text/javascript" src="plugins/jquery/jquery.min.js"></script>
-	<div id="nav-bottom"></div>
-    <script type="text/javascript">$("#nav-bottom").load("top.html");</script>
-	
+<!-- 头部栏位 -->
+<!--页面顶部，由js动态加载-->
+<script type="text/javascript" src="plugins/jquery/jquery.min.js"></script>
+<div id="nav-bottom"></div>
+<script type="text/javascript">$("#nav-bottom").load("top.html");</script>
+
 
 <script type="text/javascript" src="js/plugins/jquery/jquery.min.js"></script>
 <script type="text/javascript">
-$(function(){
-	$("#service").hover(function(){
-		$(".service").show();
-	},function(){
-		$(".service").hide();
-	});
-	$("#shopcar").hover(function(){
-		$("#shopcarlist").show();
-	},function(){
-		$("#shopcarlist").hide();
-	});
-
-})
+    $(function () {
+        $("#service").hover(function () {
+            $(".service").show();
+        }, function () {
+            $(".service").hide();
+        });
+        $("#shopcar").hover(function () {
+            $("#shopcarlist").show();
+        }, function () {
+            $("#shopcarlist").hide();
+        });
+    })
 </script>
 <script type="text/javascript" src="js/plugins/sui/sui.min.js"></script>
 <script type="text/javascript" src="js/widget/jquery.autocomplete.js"></script>
 <script type="text/javascript" src="js/widget/nav.js"></script>
 <script type="text/javascript" src="js/pages/seckill-index.js"></script>
-<script>
-	   $(function(){
-		   $("#code").hover(function(){
-			   $(".erweima").show();
-		   },function(){
-			   $(".erweima").hide();
-		   });
-	   })
-	</script>
+
+
+<div id="miaoSha" class="py-container index">
+    <!--banner-->
+    <div class="banner">
+        <img src="img/_/banner.png" class="img-responsive" alt="">
+    </div>
+
+    <!--时间栏目-->
+    <div class="sectime">
+        <div v-for="(item,index) in timeList" :key="item.id" :class="['item-time',index==selected?'active':'']"
+             @click="selected=index;getGoodsByTime(item)">
+            <div class="time-clock">{{item | dateFilter('HH:mm')}}</div>
+            <div class="time-state-on">
+
+                <span v-if="index==0">快抢中</span>
+                <span v-if="index==0">距离结束:{{timeChange(timeDistance[index])}}</span>
+
+                <span v-if="index>0">即将开始</span>
+                <span v-if="index>0">距离开始: {{timeChange(timeDistance[index])}}</span>
+
+            </div>
+        </div>
+    </div>
+    <!--商品列表-->
+    <div class="goods-list">
+        <ul class="seckill" id="seckill">
+            <li class="seckill-item" v-for="item in goodsList" :key="item">
+                <div class="pic">
+                    <img :src="item.images" alt=''>
+                </div>
+                <div class="intro"><span>{{item.title}}</span></div>
+                <div class='price'><b class='sec-price'>{{item.price}}</b><b class='ever-price'>{{item.price}}</b></div>
+                <div class='num'>
+                    <div>已售{{item.spikeTotal}}</div>
+                    <div class='progress'>
+                        <div class='sui-progress progress-danger'><span
+                                style="'width:'+((item.spikeTotal)/item.stock)*100+'%'" class='bar'></span></div>
+                    </div>
+                    <div>剩余<b class='owned'>{{item.stock-item.spikeTotal}}</b>件</div>
+                </div>
+                <a class='sui-btn btn-block btn-buy' href='javascript:void(0)' @click='jumpToDetail(item)'
+                   target='_blank'>立即抢购</a>
+            </li>
+        </ul>
+    </div>
+    <div class="cd-top">
+        <div class="top">
+            <img src="img/_/gotop.png"/>
+            <b>TOP</b>
+        </div>
+    </div>
+</div>
+
+
+<!--要进行数据的引入 下面才能调用ly.http-->
+<script src="./js/axios.min.js"></script>
+<script src="./js/common.js"></script>
+<script src="./js/moment.js"></script>
+<script src="./js/myFunc.js"></script>
+<script type="text/javascript">
+
+    Vue.filter("dateFilter", function (date, formatPattern) {
+        return moment(date).format(formatPattern || "YYYY-MM-DD HH:mm:ss");
+    });
+
+    var miaoShaVm = new Vue({
+            el: "#miaoSha",
+            data: {
+                timeList: [],
+                selected: 0,
+                timeDistance: [],  //倒计时时间差
+                goodsList: [],
+            },
+            methods: {
+                getTimeList() {
+                    ly.http.get("/manager/miaosha/timeList").then(resp => {
+                        miaoShaVm.timeList = resp.data.data;
+                        //Get first Spike goods skus
+                        this.getGoodsByTime(this.timeList[0])
+
+                        for (let i = 0; i < this.timeList.length; i++) {
+                            if (i == 0) {
+                                //获取下一个时间点,和当前时间的时间差(还有多久结束)
+                                //但是使用vue.set或者this.$set的方式可以使得新添加的属性也是响应式的，并触发视图更新。仅此而已。
+                                miaoShaVm.$set(miaoShaVm.timeDistance, i, new Date(miaoShaVm.timeList[(i + 1)]).getTime() - new Date().getTime());
+                            } else {
+                                //开始时间-现在具体的时间(还有多久开始)
+                                miaoShaVm.$set(miaoShaVm.timeDistance, i, new Date(miaoShaVm.timeList[i]).getTime() - new Date().getTime());
+                            }
+                        }
+
+                        //在function中使用this  无法同步刷新页面数据
+                        let Timer = window.setInterval(function () {
+                            for (let i = 0; i < miaoShaVm.timeDistance.length; i++) {
+                                console.log(miaoShaVm.timeDistance)
+                                console.log(miaoShaVm.timeDistance - 1000)
+                                miaoShaVm.$set(miaoShaVm.timeDistance, i, miaoShaVm.timeDistance[i] - 1000);
+                                //countDown---End
+                                if (miaoShaVm.timeDistance[i] <= 0) {
+                                    //stop timers
+                                    window.clearInterval(Timer);
+                                    //refresh the front menu
+                                    miaoShaVm.getTimeList();
+                                }
+                            }
+                        }, 1000);
+                    })
+                },
+                //compute page tim to String
+                timeChange(num) {
+                    let sec = 1000;
+                    let oneMinute = sec * 60;
+                    let oneHour = oneMinute * 60;
+                    let hours = Math.floor(num / oneHour);
+                    let minutes = Math.floor((num % oneHour) / oneMinute);
+                    let seconds = Math.floor((num % oneMinute) / sec);
+
+                    let result = hours + ':' + minutes + ':' + seconds;
+                    return result;
+                },
+                getGoodsByTime(time) {
+                    ly.http.get("/manager/miaosha/getMiaoshaGoodsByTime?time=" + time).then(resp => {
+                        this.goodsList = resp.data.data;
+                    })
+                },
+                jumpToDetail(item) {
+                    console.log(item);
+                    //这里传递对象 获取iD 不使用get
+                    console.log(this.timeList[this.selected].format("YYYYMMDDHH"))
+                    console.log(this.timeList[this.selected])
+                    window.location.href = "http://www.lingmeng.com/seckill-item.html?time=" + (this.timeList[this.selected].slice(0, 10) + this.timeList[this.selected].slice(11, 13)).replaceAll("-", '') + "&id=" + item.id;
+                }
+            },
+            created() {
+                this.getTimeList();
+            }
+
+        }
+    )
+</script>
+
+<!-- 底部栏位 -->
+<!--页面底部，由js动态加载-->
+<div class="clearfix footer"></div>
+<script type="text/javascript">$(".footer").load("foot.html");</script>
+<!--页面底部END-->
 </body>
-
-	<div class="py-container index">
-		<!--banner-->
-		<div class="banner">
-			<img src="img/_/banner.png" class="img-responsive" alt="">
-		</div>
-
-		<!--商品列表-->
-		<div class="goods-list">
-			<ul class="seckill" id="seckill">
-				<li class="seckill-item" >
-					<div class="pic" onclick="location.href='seckill-item.html'">
-						<img src="img/_/list.jpg" alt=''  >
-					</div>
-					<div class="intro"><span>Apple苹果iPhone 6s 32G金色 移动联通电信4G手机</span></div>
-					<div class='price'><b class='sec-price'>￥6088</b><b class='ever-price'>￥6988</b></div>
-					<div class='num'>
-						<div>已售87%</div>
-						<div class='progress'>
-							<div class='sui-progress progress-danger'><span style='width: 70%;' class='bar'></span></div>
-						</div>
-						<div>剩余<b class='owned'>29</b>件</div>
-					</div>
-					<a class='sui-btn btn-block btn-buy' href='seckill-item.html' target='_blank'>立即抢购</a>
-				</li>
-				<li class="seckill-item">
-					<div class="pic">
-						<img src="img/_/list.jpg" alt=''>
-					</div>
-					<div class="intro"><span>Apple苹果iPhone 6s 32G金色 移动联通电信4G手机</span></div>
-					<div class='price'><b class='sec-price'>￥6088</b><b class='ever-price'>￥6988</b></div>
-					<div class='num'>
-						<div>已售87%</div>
-						<div class='progress'>
-							<div class='sui-progress progress-danger'><span style='width: 70%;' class='bar'></span></div>
-						</div>
-						<div>剩余<b class='owned'>29</b>件</div>
-					</div>
-					<a class='sui-btn btn-block btn-buy' href='seckill-item.html' target='_blank'>立即抢购</a>
-				</li>
-				<li class="seckill-item">
-					<div class="pic">
-						<img src="img/_/list.jpg" alt=''>
-					</div>
-					<div class="intro"><span>Apple苹果iPhone 6s 32G金色 移动联通电信4G手机</span></div>
-					<div class='price'><b class='sec-price'>￥6088</b><b class='ever-price'>￥6988</b></div>
-					<div class='num'>
-						<div>已售87%</div>
-						<div class='progress'>
-							<div class='sui-progress progress-danger'><span style='width: 70%;' class='bar'></span></div>
-						</div>
-						<div>剩余<b class='owned'>29</b>件</div>
-					</div>
-					<a class='sui-btn btn-block btn-buy' href='seckill-item.html' target='_blank'>立即抢购</a>
-				</li>
-				<li class="seckill-item">
-					<div class="pic">
-						<img src="img/_/list.jpg" alt=''>
-					</div>
-					<div class="intro"><span>Apple苹果iPhone 6s 32G金色 移动联通电信4G手机</span></div>
-					<div class='price'><b class='sec-price'>￥6088</b><b class='ever-price'>￥6988</b></div>
-					<div class='num'>
-						<div>已售87%</div>
-						<div class='progress'>
-							<div class='sui-progress progress-danger'><span style='width: 70%;' class='bar'></span></div>
-						</div>
-						<div>剩余<b class='owned'>29</b>件</div>
-					</div>
-					<a class='sui-btn btn-block btn-buy' href='seckill-item.html' target='_blank'>立即抢购</a>
-				</li>
-				<li class="seckill-item">
-					<div class="pic">
-						<img src="img/_/list.jpg" alt=''>
-					</div>
-					<div class="intro"><span>Apple苹果iPhone 6s 32G金色 移动联通电信4G手机</span></div>
-					<div class='price'><b class='sec-price'>￥6088</b><b class='ever-price'>￥6988</b></div>
-					<div class='num'>
-						<div>已售87%</div>
-						<div class='progress'>
-							<div class='sui-progress progress-danger'><span style='width: 70%;' class='bar'></span></div>
-						</div>
-						<div>剩余<b class='owned'>29</b>件</div>
-					</div>
-					<a class='sui-btn btn-block btn-buy' href='seckill-item.html' target='_blank'>立即抢购</a>
-				</li>
-				<li class="seckill-item">
-					<div class="pic">
-						<img src="img/_/list.jpg" alt=''>
-					</div>
-					<div class="intro"><span>Apple苹果iPhone 6s 32G金色 移动联通电信4G手机</span></div>
-					<div class='price'><b class='sec-price'>￥6088</b><b class='ever-price'>￥6988</b></div>
-					<div class='num'>
-						<div>已售87%</div>
-						<div class='progress'>
-							<div class='sui-progress progress-danger'><span style='width: 70%;' class='bar'></span></div>
-						</div>
-						<div>剩余<b class='owned'>29</b>件</div>
-					</div>
-					<a class='sui-btn btn-block btn-buy' href='seckill-item.html' target='_blank'>立即抢购</a>
-				</li>
-				<li class="seckill-item">
-					<div class="pic">
-						<img src="img/_/list.jpg" alt=''>
-					</div>
-					<div class="intro"><span>Apple苹果iPhone 6s 32G金色 移动联通电信4G手机</span></div>
-					<div class='price'><b class='sec-price'>￥6088</b><b class='ever-price'>￥6988</b></div>
-					<div class='num'>
-						<div>已售87%</div>
-						<div class='progress'>
-							<div class='sui-progress progress-danger'><span style='width: 70%;' class='bar'></span></div>
-						</div>
-						<div>剩余<b class='owned'>29</b>件</div>
-					</div>
-					<a class='sui-btn btn-block btn-buy' href='seckill-item.html' target='_blank'>立即抢购</a>
-				</li>
-				<li class="seckill-item">
-					<div class="pic">
-						<img src="img/_/list.jpg" alt=''>
-					</div>
-					<div class="intro"><span>Apple苹果iPhone 6s 32G金色 移动联通电信4G手机</span></div>
-					<div class='price'><b class='sec-price'>￥6088</b><b class='ever-price'>￥6988</b></div>
-					<div class='num'>
-						<div>已售87%</div>
-						<div class='progress'>
-							<div class='sui-progress progress-danger'><span style='width: 70%;' class='bar'></span></div>
-						</div>
-						<div>剩余<b class='owned'>29</b>件</div>
-					</div>
-					<a class='sui-btn btn-block btn-buy' href='seckill-item.html' target='_blank'>立即抢购</a>
-				</li>
-				<li class="seckill-item">
-					<div class="pic">
-						<img src="img/_/list.jpg" alt=''>
-					</div>
-					<div class="intro"><span>Apple苹果iPhone 6s 32G金色 移动联通电信4G手机</span></div>
-					<div class='price'><b class='sec-price'>￥6088</b><b class='ever-price'>￥6988</b></div>
-					<div class='num'>
-						<div>已售87%</div>
-						<div class='progress'>
-							<div class='sui-progress progress-danger'><span style='width: 70%;' class='bar'></span></div>
-						</div>
-						<div>剩余<b class='owned'>29</b>件</div>
-					</div>
-					<a class='sui-btn btn-block btn-buy' href='seckill-item.html' target='_blank'>立即抢购</a>
-				</li>
-				<li class="seckill-item">
-					<div class="pic">
-						<img src="img/_/list.jpg" alt=''>
-					</div>
-					<div class="intro"><span>Apple苹果iPhone 6s 32G金色 移动联通电信4G手机</span></div>
-					<div class='price'><b class='sec-price'>￥6088</b><b class='ever-price'>￥6988</b></div>
-					<div class='num'>
-						<div>已售87%</div>
-						<div class='progress'>
-							<div class='sui-progress progress-danger'><span style='width: 70%;' class='bar'></span></div>
-						</div>
-						<div>剩余<b class='owned'>29</b>件</div>
-					</div>
-					<a class='sui-btn btn-block btn-buy' href='seckill-item.html' target='_blank'>立即抢购</a>
-				</li>
-				<li class="seckill-item">
-					<div class="pic">
-						<img src="img/_/list.jpg" alt=''>
-					</div>
-					<div class="intro"><span>Apple苹果iPhone 6s 32G金色 移动联通电信4G手机</span></div>
-					<div class='price'><b class='sec-price'>￥6088</b><b class='ever-price'>￥6988</b></div>
-					<div class='num'>
-						<div>已售87%</div>
-						<div class='progress'>
-							<div class='sui-progress progress-danger'><span style='width: 70%;' class='bar'></span></div>
-						</div>
-						<div>剩余<b class='owned'>29</b>件</div>
-					</div>
-					<a class='sui-btn btn-block btn-buy' href='seckill-item.html' target='_blank'>立即抢购</a>
-				</li>
-				<li class="seckill-item">
-					<div class="pic">
-						<img src="img/_/list.jpg" alt=''>
-					</div>
-					<div class="intro"><span>Apple苹果iPhone 6s 32G金色 移动联通电信4G手机</span></div>
-					<div class='price'><b class='sec-price'>￥6088</b><b class='ever-price'>￥6988</b></div>
-					<div class='num'>
-						<div>已售87%</div>
-						<div class='progress'>
-							<div class='sui-progress progress-danger'><span style='width: 70%;' class='bar'></span></div>
-						</div>
-						<div>剩余<b class='owned'>29</b>件</div>
-					</div>
-					<a class='sui-btn btn-block btn-buy' href='seckill-item.html' target='_blank'>立即抢购</a>
-				</li>
-
-
-			</ul>
-		</div>
-		<div class="cd-top">
-			<div class="top">
-				<img src="img/_/gotop.png" />
-				<b>TOP</b>
-			</div>
-			<div class="code" id="code">
-				<span><img src="img/_/code.png"/></span>
-			</div>
-			<div class="erweima">
-				<img src="img/_/erweima.jpg" alt="">
-				<s></s>
-			</div>
-		</div>
-	</div>
-
-	<!-- 底部栏位 -->
-	<!--页面底部，由js动态加载-->
-	<div class="clearfix footer"></div>
-	<script type="text/javascript">$(".footer").load("foot.html");</script>
-	<!--页面底部END-->
 
 </html>

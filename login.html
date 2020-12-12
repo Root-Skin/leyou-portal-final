@@ -111,7 +111,7 @@
         },
         methods:{
             login(){
-                lingmeng.http.post("/auth/check",lingmeng.stringify(this.form))
+                lingmeng.http.post("/manager/auth/check",this.form)
                     .then(resp => {
                         if(resp.status === 200){
                             const url = lingmeng.getUrlParam("returnUrl");
